@@ -1032,9 +1032,135 @@ Let’s make these changes!
 
 ---
 
+```diff
+  "use client";
++ import Image from "next/image";
+  import { useState } from "react";
++ 
++ // Define a type for Met objects
++ interface MetObject {
++   objectID: number;
++   primaryImageSmall: string;
++   title: string;
++   artistDisplayName: string;
++   objectDate: string;
++ }
+  
+  export default function Home() {
+    const [query, setQuery] = useState("");
+-   const [results, setResults] = useState<any[]>([]);
++   const [results, setResults] = useState<MetObject[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+```
 
+```diff
+      try {
+        const startIdx = (page - 1) * resultsPerPage;
+-       let found: any[] = [];
++       let found: MetObject[] = [];
+        let idx = startIdx;
+        // Keep fetching until we have 9 with images or run out of IDs
+```
+
+```diff
+          );
+          const details = await Promise.all(detailPromises);
+-         const withImages = details.filter(obj => obj.primaryImageSmall);
++         const withImages = details.filter((obj): obj is MetObject => obj.primaryImageSmall && obj.objectID);
+          found = found.concat(withImages);
+          idx += batch.length;
+        }
+        setResults(found.slice(0, resultsPerPage));
+-     } catch (err) {
++     } catch {
+        setError("Failed to fetch results. Please try again.");
+      } finally {
+```
+
+```diff
+        setObjectIDs(searchData.objectIDs);
+        await fetchPageWithImages(1);
+-     } catch (err) {
++     } catch {
+        setError("Failed to fetch results. Please try again.");
+      } finally {
+```
+
+```diff
+          {results.filter(obj => obj && obj.objectID).map((obj, idx) => (
+            <div key={obj.objectID ?? idx} className="bg-white rounded shadow p-4 flex flex-col items-center">
+-             <img
++             <Image
+                src={obj.primaryImageSmall}
+                alt={obj.title}
++               width={160}
++               height={160}
+                className="w-40 h-40 object-contain mb-2 rounded"
+-               loading="lazy"
++               style={{ objectFit: 'contain' }}
++               priority={idx < 3}
+              />
+              <div className="font-semibold text-center mb-1">{obj.title}</div>
+```
 
 ---
+
+Your code is now updated to fix all Vercel build errors:
+
+- A `MetObject` type is defined and used instead of `any`.
+- All unused `err` variables in `catch` blocks are removed.
+- The `<img>` tag is replaced with Next.js `<Image />` for optimized image loading.
+
+This should resolve all TypeScript and ESLint errors, and your app will build and deploy successfully on Vercel. If you encounter any further issues or want to refine types or image handling, let me know!
+
+---
+
+_**User**_
+
+when deployed, the images are not shown, locally fine
+
+---
+
+_**Assistant**_
+
+This is a common issue with Next.js and the `<Image />` component:  
+**By default, Next.js restricts which external domains images can be loaded from in production.**  
+You need to explicitly allow the Met Museum's image domain in your `next.config.js` file.
+
+### How to Fix
+
+1. **Edit `next.config.js`**  
+   Add the Met Museum's image domain (usually `images.metmuseum.org`) to the `images.domains` array.
+
+```js
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    domains: ['images.metmuseum.org'],
+  },
+};
+
+module.exports = nextConfig;
+```
+
+2. **Commit and redeploy**  
+   After saving the change, push to your repo and Vercel will redeploy. Images should now load in production.
+
+---
+
+Would you like me to make this change for you?
+
+---
+
+_**User**_
+
+yes
+
+---
+
+_**Assistant**_
 
 
 
