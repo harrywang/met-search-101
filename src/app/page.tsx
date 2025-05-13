@@ -1,103 +1,166 @@
-import Image from "next/image";
+"use client";
+import { useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [objectIDs, setObjectIDs] = useState<number[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const resultsPerPage = 9;
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  async function fetchPageWithImages(page: number) {
+    setLoading(true);
+    setError("");
+    setResults([]);
+    setCurrentPage(page);
+    try {
+      const startIdx = (page - 1) * resultsPerPage;
+      let found: any[] = [];
+      let idx = startIdx;
+      // Keep fetching until we have 9 with images or run out of IDs
+      while (found.length < resultsPerPage && idx < objectIDs.length) {
+        const batch = objectIDs.slice(idx, idx + (resultsPerPage * 2)); // fetch in batches for efficiency
+        const detailPromises = batch.map((id: number) =>
+          fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`).then((r) => r.json())
+        );
+        const details = await Promise.all(detailPromises);
+        const withImages = details.filter(obj => obj.primaryImageSmall);
+        found = found.concat(withImages);
+        idx += batch.length;
+      }
+      setResults(found.slice(0, resultsPerPage));
+    } catch (err) {
+      setError("Failed to fetch results. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function goToPage(page: number) {
+    await fetchPageWithImages(page);
+  }
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setResults([]);
+    setObjectIDs([]);
+    setCurrentPage(1);
+    try {
+      // Search API call
+      const searchRes = await fetch(
+        `https://collectionapi.metmuseum.org/public/collection/v1/search?q=${encodeURIComponent(query)}`
+      );
+      const searchData = await searchRes.json();
+      if (!searchData.objectIDs || searchData.objectIDs.length === 0) {
+        setResults([]);
+        setObjectIDs([]);
+        setLoading(false);
+        return;
+      }
+      setObjectIDs(searchData.objectIDs);
+      await fetchPageWithImages(1);
+    } catch (err) {
+      setError("Failed to fetch results. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const totalPages = Math.ceil(objectIDs.length / resultsPerPage); // This is an upper bound, but fine for navigation
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-start p-8 font-sans bg-gray-50">
+      <h1 className="text-3xl font-bold mb-6 mt-8">Met Museum Search</h1>
+      <form onSubmit={handleSearch} className="flex gap-2 mb-8 w-full max-w-xl">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search the Met collection..."
+            className="w-full px-4 py-2 pr-12 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            required
+          />
+          {(query || results.length > 0) && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setResults([]);
+                setObjectIDs([]);
+                setCurrentPage(1);
+                setError("");
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition text-xl focus:outline-none"
+              aria-label="Clear search"
+              disabled={loading}
+            >
+              ×
+            </button>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="submit"
+          className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          disabled={loading}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          {loading ? "Searching..." : "Search"}
+        </button>
+      </form>
+      {error && <div className="text-red-600 mb-4">{error}</div>}
+      {loading && (
+        <div className="flex justify-center items-center w-full my-8">
+          <div className="flex space-x-2">
+            <span className="block w-4 h-4 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.32s]"></span>
+            <span className="block w-4 h-4 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.16s]"></span>
+            <span className="block w-4 h-4 bg-blue-500 rounded-full animate-bounce"></span>
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-4xl">
+        {results.filter(obj => obj && obj.objectID).map((obj, idx) => (
+          <div key={obj.objectID ?? idx} className="bg-white rounded shadow p-4 flex flex-col items-center">
+            <img
+              src={obj.primaryImageSmall}
+              alt={obj.title}
+              className="w-40 h-40 object-contain mb-2 rounded"
+              loading="lazy"
+            />
+            <div className="font-semibold text-center mb-1">{obj.title}</div>
+            <div className="text-sm text-gray-600 text-center">{obj.artistDisplayName || "Unknown Artist"}</div>
+            <div className="text-xs text-gray-400 text-center mt-1">{obj.objectDate}</div>
+          </div>
+        ))}
+      </div>
+      {/* Pagination Controls */}
+      {objectIDs.length > 0 && (
+        <div className="flex gap-4 items-center justify-center mt-8">
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
+      {results.length === 0 && !loading && (
+        <div className="text-gray-500 mt-8">No results yet. Try searching for something!</div>
+      )}
     </div>
   );
 }
