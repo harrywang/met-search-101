@@ -1,4 +1,16 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Met Museum Search App
+
+This project is a modern search interface for the Metropolitan Museum of Art collection, built with [Next.js](https://nextjs.org). It uses the [Met Museum Collection API](https://metmuseum.github.io/) to let you search, browse, and explore artworks.
+
+## Features
+
+- **Search** the Met collection by keyword
+- **Pagination**: 9 results per page, with Next/Previous navigation
+- **Image filtering**: Only shows artworks with images
+- **Loading animation**: Animated dots while fetching results
+- **Clear search**: Easily clear your search with an "×" button inside the input
+- **Sample searches**: (if enabled in your UI)
+- Responsive, clean UI
 
 ## Getting Started
 
@@ -14,20 +26,30 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to use the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How It Works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Enter a search term and press **Search** (or Enter)
+- Results with images are shown in a grid, 9 per page
+- Use **Next** and **Previous** to page through results
+- Click the **×** button to clear your search and start over
+- While loading, an animated dots loader is shown
+
+## API Integration
+
+This app uses the [Metropolitan Museum of Art Collection API](https://metmuseum.github.io/):
+- `/search` endpoint to find object IDs by keyword
+- `/objects/{id}` endpoint to fetch artwork details and images
+
+## Customization
+
+You can edit the main search page in `src/app/page.tsx` to further customize the UI or add new features.
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Met Museum API Docs](https://metmuseum.github.io/)
 
 ## Deploy on Vercel
 
