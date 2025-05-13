@@ -1,9 +1,19 @@
 "use client";
+import Image from "next/image";
 import { useState } from "react";
+
+// Define a type for Met objects
+interface MetObject {
+  objectID: number;
+  primaryImageSmall: string;
+  title: string;
+  artistDisplayName: string;
+  objectDate: string;
+}
 
 export default function Home() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<MetObject[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [objectIDs, setObjectIDs] = useState<number[]>([]);
@@ -17,7 +27,7 @@ export default function Home() {
     setCurrentPage(page);
     try {
       const startIdx = (page - 1) * resultsPerPage;
-      let found: any[] = [];
+      let found: MetObject[] = [];
       let idx = startIdx;
       // Keep fetching until we have 9 with images or run out of IDs
       while (found.length < resultsPerPage && idx < objectIDs.length) {
@@ -26,12 +36,12 @@ export default function Home() {
           fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`).then((r) => r.json())
         );
         const details = await Promise.all(detailPromises);
-        const withImages = details.filter(obj => obj.primaryImageSmall);
+        const withImages = details.filter((obj): obj is MetObject => obj.primaryImageSmall && obj.objectID);
         found = found.concat(withImages);
         idx += batch.length;
       }
       setResults(found.slice(0, resultsPerPage));
-    } catch (err) {
+    } catch {
       setError("Failed to fetch results. Please try again.");
     } finally {
       setLoading(false);
@@ -63,7 +73,7 @@ export default function Home() {
       }
       setObjectIDs(searchData.objectIDs);
       await fetchPageWithImages(1);
-    } catch (err) {
+    } catch {
       setError("Failed to fetch results. Please try again.");
     } finally {
       setLoading(false);
@@ -124,11 +134,14 @@ export default function Home() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-4xl">
         {results.filter(obj => obj && obj.objectID).map((obj, idx) => (
           <div key={obj.objectID ?? idx} className="bg-white rounded shadow p-4 flex flex-col items-center">
-            <img
+            <Image
               src={obj.primaryImageSmall}
               alt={obj.title}
+              width={160}
+              height={160}
               className="w-40 h-40 object-contain mb-2 rounded"
-              loading="lazy"
+              style={{ objectFit: 'contain' }}
+              priority={idx < 3}
             />
             <div className="font-semibold text-center mb-1">{obj.title}</div>
             <div className="text-sm text-gray-600 text-center">{obj.artistDisplayName || "Unknown Artist"}</div>
